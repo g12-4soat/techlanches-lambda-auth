@@ -76,8 +76,8 @@ jobs:
             })
         
       - name: Terraform Plan Status
-        #if: steps.tf-plan.outcome == 'failure'
-        #run: exit 1
+        if: steps.tf-plan.outcome == 'failure'
+        run: exit 1
   
   tf-deploy:
     name: Terraform Deploy
