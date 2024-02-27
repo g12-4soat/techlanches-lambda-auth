@@ -85,7 +85,7 @@ jobs:
     needs: 
       - tf-test
 
-    ##if: github.ref == 'refs/heads/release' || github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/release' || github.ref == 'refs/heads/main'
 
     runs-on: ubuntu-latest
 
