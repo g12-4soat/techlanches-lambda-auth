@@ -1,8 +1,8 @@
 terraform {
    backend "s3" {
     bucket = "techlanches-terraform"
-    key    = "techlanches-infra-db/terraform.tfstate"
-    region = var.region
+    key    = "techlanches-lambda-auth/terraform.tfstate"
+    region = "us-east-1"
   }
   required_providers {
     aws = {

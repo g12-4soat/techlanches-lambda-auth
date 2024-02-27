@@ -10,7 +10,7 @@ resource "aws_api_gateway_documentation_part" "documentation_part" {
     type = "API"
   }
 
-  properties  = "{\"description\":\"TechChallenge_APIGateway\"}"
+  properties  = "{\"description\":\"TechChallenge_APIGatewa\"}"
   rest_api_id = aws_api_gateway_rest_api.tech_lanches_api_gateweay.id
 }
 
