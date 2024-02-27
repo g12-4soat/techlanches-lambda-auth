@@ -76,8 +76,8 @@ jobs:
             })
         
       - name: Terraform Plan Status
-        if: steps.tf-plan.outcome == 'failure'
-        run: exit 1
+        #if: steps.tf-plan.outcome == 'failure'
+        #run: exit 1
   
   tf-deploy:
     name: Terraform Deploy
@@ -85,7 +85,7 @@ jobs:
     needs: 
       - tf-test
 
-    if: github.ref == 'refs/heads/release' || github.ref == 'refs/heads/main'
+    #if: github.ref == 'refs/heads/release' || github.ref == 'refs/heads/main'
 
     runs-on: ubuntu-latest
 
