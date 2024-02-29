@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34316.72
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TechLanchesLambda", "AWSServerless1\TechLanchesLambda.csproj", "{FD2D6320-FB5E-4646-BD28-D7AD1D9F062B}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TechLanchesLambda.Tests", "AWSServerless1.Tests\TechLanchesLambda.Tests.csproj", "{5D8EDECE-D64E-45E2-A521-3B40D99D755C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FD2D6320-FB5E-4646-BD28-D7AD1D9F062B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FD2D6320-FB5E-4646-BD28-D7AD1D9F062B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FD2D6320-FB5E-4646-BD28-D7AD1D9F062B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FD2D6320-FB5E-4646-BD28-D7AD1D9F062B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5D8EDECE-D64E-45E2-A521-3B40D99D755C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D8EDECE-D64E-45E2-A521-3B40D99D755C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D8EDECE-D64E-45E2-A521-3B40D99D755C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D8EDECE-D64E-45E2-A521-3B40D99D755C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5A1F6EC4-E245-4745-B84F-329C5D869F02}
+	EndGlobalSection
+EndGlobal
