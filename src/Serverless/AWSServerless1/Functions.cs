@@ -1,13 +1,10 @@
-using Amazon.Lambda.Core;
-using Amazon.Lambda.APIGatewayEvents;
 using Amazon.Lambda.Annotations;
 using Amazon.Lambda.Annotations.APIGateway;
-using Amazon.Extensions.CognitoAuthentication;
+using Amazon.Lambda.APIGatewayEvents;
+using Amazon.Lambda.Core;
 using Newtonsoft.Json;
-using Amazon.CognitoIdentityProvider;
+using System.Net;
 using TechLanchesLambda.Service;
-using Amazon.CognitoIdentityProvider.Model;
-using Amazon;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
@@ -46,16 +43,11 @@ public class Functions
     {
 
         var userTechLanches = Environment.GetEnvironmentVariable("UserTechLanches");
-
-        var teste = request.QueryStringParameters;
-
         context.Logger.LogInformation("Handling the 'GetAuth' Request");
 
         try
         {
-            //var body = JsonConvert.DeserializeObject<Dictionary<string, string>>(request.Body);
-            var body = request.QueryStringParameters;
-
+            var body = JsonConvert.DeserializeObject<Dictionary<string, string>>(request.Body);
             var cpf = body?.Count > 0 ? body["cpf"] : userTechLanches;
 
             if (await cognitoService.SignUp(cpf))
@@ -66,7 +58,7 @@ public class Functions
 
                 return new APIGatewayProxyResponse
                 {
-                    StatusCode = !String.IsNullOrEmpty(token) ? 200 : 400,
+                    StatusCode = !string.IsNullOrEmpty(token) ? (int)HttpStatusCode.OK : (int)HttpStatusCode.BadRequest,
                     Body = JsonConvert.SerializeObject(token),
                     Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
                 };
@@ -74,7 +66,7 @@ public class Functions
 
             return new APIGatewayProxyResponse
             {
-                StatusCode = 400,
+                StatusCode = (int)HttpStatusCode.BadRequest,
                 Body = JsonConvert.SerializeObject("An error occurred while signing up."),
                 Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
             };
