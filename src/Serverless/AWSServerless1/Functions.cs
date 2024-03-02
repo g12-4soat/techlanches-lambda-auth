@@ -2,9 +2,11 @@ using Amazon.Lambda.Annotations;
 using Amazon.Lambda.Annotations.APIGateway;
 using Amazon.Lambda.APIGatewayEvents;
 using Amazon.Lambda.Core;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using System.Net;
 using TechLanchesLambda.Service;
+using TechLanchesLambda.Utils;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
@@ -39,7 +41,8 @@ public class Functions
     [RestApi(LambdaHttpMethod.Post, "/Auth")]
     public async Task<APIGatewayProxyResponse> LambdaAuth(APIGatewayProxyRequest request,
                                                   ILambdaContext context,
-                                                  [FromServices] ICognitoService cognitoService)
+                                                  [FromServices] ICognitoService cognitoService, 
+                                                  [FromServices] IConfiguration configuration)
     {
 
         var userTechLanches = Environment.GetEnvironmentVariable("UserTechLanches");
@@ -47,8 +50,21 @@ public class Functions
 
         try
         {
-            var body = JsonConvert.DeserializeObject<Dictionary<string, string>>(request.Body);
-            var cpf = body?.Count > 0 ? body["cpf"] : userTechLanches;
+            var awsOptions = configuration.GetSection("AWS")
+               .Get<Options.AWSOptions>();
+
+            ArgumentNullException.ThrowIfNull(awsOptions);
+            string cpf;
+            bool cpfFoiInformado = request.QueryStringParameters.Any(x => x.Key == "cpf" && !string.IsNullOrEmpty(x.Value) && !string.IsNullOrWhiteSpace(x.Value));
+            if (cpfFoiInformado)
+            {
+                if (!ValidatorCPF.Validar(request.QueryStringParameters["cpf"])) throw new Exception("CPF Invalido");
+                cpf = ValidatorCPF.LimparCpf(request.QueryStringParameters["cpf"]);
+            }
+            else
+            {
+                cpf = awsOptions.UserTechLanches;
+            }
 
             if (await cognitoService.SignUp(cpf))
             {

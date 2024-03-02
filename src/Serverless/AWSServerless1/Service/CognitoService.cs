@@ -31,7 +31,7 @@ namespace TechLanchesLambda.Service
             {
                 var adminUser = new AdminGetUserRequest()
                 {
-                    Username = ValidatorCPF.LimparCpf(cpf),
+                    Username = cpf,
                     UserPoolId = _awsOptions!.UserPoolId
                 };
 
@@ -40,11 +40,6 @@ namespace TechLanchesLambda.Service
             }
             catch(Exception ex) 
             {
-                if (!cpf.Contains("techlanches") && !ValidatorCPF.Validar(cpf)) return false;
-
-                else
-                    cpf = cpf.Contains("techlanches") ? cpf : ValidatorCPF.LimparCpf(cpf);
-
                 var input = new SignUpRequest
                 {
                     ClientId = _awsOptions.UserPoolClientId,
@@ -77,8 +72,6 @@ namespace TechLanchesLambda.Service
 
         public async Task<string> SignIn(string cpf)
         {
-            if (!cpf.Contains("techlanches")) cpf = ValidatorCPF.LimparCpf(cpf);
-                
             using (var provider = _provider)
             {
                 var userPool = new CognitoUserPool(_awsOptions.UserPoolId, _awsOptions.UserPoolClientId, provider);
