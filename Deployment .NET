@@ -1,0 +1,27 @@
+name: .NET Build and Deploy
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  build:
+   runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 8.x
+
+    - name: Restore NuGet packages
+      run: dotnet restore test/**/*.csproj
+
+    - name: Build
+      run: dotnet build test/**/*.csproj
+  
