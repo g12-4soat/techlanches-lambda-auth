@@ -31,7 +31,7 @@ namespace TechLanchesLambda.Service
             {
                 var adminUser = new AdminGetUserRequest()
                 {
-                    Username = cpf,
+                    Username = ValidatorCPF.LimparCpf(cpf),
                     UserPoolId = _awsOptions!.UserPoolId
                 };
 

@@ -10,7 +10,7 @@ namespace TechLanchesLambda.Utils
             //    return true;
 
             // Remove caracteres não numéricos
-            string cpfLimpo = LimparCpf(cpf);
+            string cpfLimpo = LimparCpf(cpf).Trim();
 
             // Verifica se o CPF tem 11 dígitos
             if (cpfLimpo.Length != 11)
@@ -48,7 +48,7 @@ namespace TechLanchesLambda.Utils
 
         public static string LimparCpf(string cpf)
         {
-            return Regex.Replace(cpf, @"[^\d]", "");
+            return Regex.Replace(cpf.Trim(), @"[^\d]", "");
         }
     }
 }
