@@ -5,90 +5,90 @@ using Amazon.Extensions.CognitoAuthentication;
 using Microsoft.Extensions.Configuration;
 using TechLanchesLambda.Utils;
 
-namespace TechLanchesLambda.Service
+namespace TechLanchesLambda.Service;
+
+public interface ICognitoService
 {
-    public class CognitoService : ICognitoService
+    Task<Resultado> SignUp(string userName);
+    Task<Resultado<string>> SignIn(string userName);
+}
+
+public class CognitoService : ICognitoService
+{
+    private readonly Options.AWSOptions _awsOptions;
+    private readonly AmazonCognitoIdentityProviderClient _client;
+    private readonly AmazonCognitoIdentityProviderClient _provider;
+  
+    public CognitoService(IConfiguration configuration)
     {
-        private readonly Options.AWSOptions _awsOptions;
-        private readonly AmazonCognitoIdentityProviderClient _client;
-        private readonly AmazonCognitoIdentityProviderClient _provider;
-      
-        public CognitoService(IConfiguration configuration)
+        var awsOptions = configuration.GetSection("AWS")
+            .Get<Options.AWSOptions>();
+
+        ArgumentNullException.ThrowIfNull(awsOptions);
+        _awsOptions = awsOptions;
+
+        _provider = new AmazonCognitoIdentityProviderClient(RegionEndpoint.GetBySystemName(_awsOptions.Region));
+        _client = new AmazonCognitoIdentityProviderClient();
+    }
+
+    public async Task<Resultado> SignUp(string userName)
+    {
+        try
         {
-            var awsOptions = configuration.GetSection("AWS")
-                .Get<Options.AWSOptions>();
+            var adminUser = new AdminGetUserRequest()
+            {
+                Username = userName,
+                UserPoolId = _awsOptions!.UserPoolId
+            };
 
-            ArgumentNullException.ThrowIfNull(awsOptions);
-            _awsOptions = awsOptions;
-
-            _provider = new AmazonCognitoIdentityProviderClient(RegionEndpoint.GetBySystemName(_awsOptions.Region));
-            _client = new AmazonCognitoIdentityProviderClient();
+            var user = await _client.AdminGetUserAsync(adminUser);
+            return Resultado.Ok();
         }
-
-        public async Task<bool> SignUp(string cpf)
+        catch
         {
-            try
+            var input = new SignUpRequest
             {
-                var adminUser = new AdminGetUserRequest()
+                ClientId = _awsOptions.UserPoolClientId,
+                Username = userName,
+                Password = _awsOptions.PasswordDefault,
+                UserAttributes = new List<AttributeType>
                 {
-                    Username = cpf,
-                    UserPoolId = _awsOptions!.UserPoolId
-                };
-
-                var user = await _client.AdminGetUserAsync(adminUser);
-                return true;
-            }
-            catch(Exception ex) 
-            {
-                var input = new SignUpRequest
-                {
-                    ClientId = _awsOptions.UserPoolClientId,
-                    Username = cpf,
-                    Password = _awsOptions.PasswordDefault,
-                    UserAttributes = new List<AttributeType>
-                    {
-                        new AttributeType {Name = "email", Value = _awsOptions.EmailDefault }
-                    }
-                };
-
-                var signUpResponse = await _client.SignUpAsync(input);
-
-                // Optionally, you can auto-confirm the user
-                if (signUpResponse.HttpStatusCode == System.Net.HttpStatusCode.OK)
-                {
-                    var confirmRequest = new AdminConfirmSignUpRequest
-                    {
-                        Username = cpf,
-                        UserPoolId = _awsOptions.UserPoolId
-                    };
-
-                    await _client.AdminConfirmSignUpAsync(confirmRequest);
-                    return true;
+                    new AttributeType {Name = "email", Value = _awsOptions.EmailDefault }
                 }
+            };
 
-                return false;
-            }
-        }
+            var signUpResponse = await _client.SignUpAsync(input);
 
-        public async Task<string> SignIn(string cpf)
-        {
-            using (var provider = _provider)
+            if (signUpResponse.HttpStatusCode != System.Net.HttpStatusCode.OK)
+                return Resultado.Falha("Houve algo de errado ao cadastrar o usuário");
+
+            var confirmRequest = new AdminConfirmSignUpRequest
             {
-                var userPool = new CognitoUserPool(_awsOptions.UserPoolId, _awsOptions.UserPoolClientId, provider);
-                var user = new CognitoUser(cpf, _awsOptions.UserPoolClientId, userPool, provider);
+                Username = userName,
+                UserPoolId = _awsOptions.UserPoolId
+            };
 
-                var authRequest = new InitiateAdminNoSrpAuthRequest
-                {
-                    Password = _awsOptions.PasswordDefault
-                };
-
-                var authResponse = await user.StartWithAdminNoSrpAuthAsync(authRequest);
-
-                if (authResponse.AuthenticationResult != null)
-                    return authResponse.AuthenticationResult.AccessToken;
-            }
-
-            return "An error occurred while signing in.";
+            await _client.AdminConfirmSignUpAsync(confirmRequest);
+            return Resultado.Ok();
         }
+    }
+
+    public async Task<Resultado<string>> SignIn(string userName)
+    {
+        using var provider = _provider;
+        var userPool = new CognitoUserPool(_awsOptions.UserPoolId, _awsOptions.UserPoolClientId, provider);
+        var user = new CognitoUser(userName, _awsOptions.UserPoolClientId, userPool, provider);
+
+        var authRequest = new InitiateAdminNoSrpAuthRequest
+        {
+            Password = _awsOptions.PasswordDefault
+        };
+
+        var authResponse = await user.StartWithAdminNoSrpAuthAsync(authRequest);
+
+        if (authResponse.AuthenticationResult != null)
+            return Resultado.Ok(authResponse.AuthenticationResult.AccessToken);
+
+        return Resultado.Falha<string>("Ocorreu um erro ao fazer login.");
     }
 }

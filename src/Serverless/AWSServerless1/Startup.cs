@@ -20,8 +20,6 @@ public class Startup
     /// </summary>
     public void ConfigureServices(IServiceCollection services)
     {
-        //// Example of creating the IConfiguration object and
-        //// adding it to the dependency injection container.
         var builder = new ConfigurationBuilder()
             .SetBasePath(Path.Combine(Directory.GetCurrentDirectory()))
             .AddJsonFile("appsettings.json");

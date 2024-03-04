@@ -5,6 +5,7 @@ using Amazon.Lambda.Core;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using System.Net;
+using TechLanchesLambda.Options;
 using TechLanchesLambda.Service;
 using TechLanchesLambda.Utils;
 
@@ -44,46 +45,55 @@ public class Functions
                                                   [FromServices] ICognitoService cognitoService, 
                                                   [FromServices] IConfiguration configuration)
     {
-
-        var userTechLanches = Environment.GetEnvironmentVariable("UserTechLanches");
-        context.Logger.LogInformation("Handling the 'GetAuth' Request");
-
         try
         {
+            context.Logger.LogInformation("Handling the 'GetAuth' Request");
+
             var awsOptions = configuration.GetSection("AWS")
                .Get<Options.AWSOptions>();
 
             ArgumentNullException.ThrowIfNull(awsOptions);
-            string cpf;
-            bool cpfFoiInformado = request.QueryStringParameters.Any(x => x.Key == "cpf" && !string.IsNullOrEmpty(x.Value) && !string.IsNullOrWhiteSpace(x.Value));
-            if (cpfFoiInformado)
+            var resultadoValidacaoUsuario = ObterNomeUsuario(request, awsOptions);
+            if(resultadoValidacaoUsuario.Falhou)
             {
-                if (!ValidatorCPF.Validar(request.QueryStringParameters["cpf"])) throw new Exception("CPF Invalido");
-                cpf = ValidatorCPF.LimparCpf(request.QueryStringParameters["cpf"]);
-            }
-            else
-            {
-                cpf = awsOptions.UserTechLanches;
-            }
-
-            if (await cognitoService.SignUp(cpf))
-            {
-                var token = await cognitoService.SignIn(cpf);
-
-                //gravar cliente no DB
-
                 return new APIGatewayProxyResponse
                 {
-                    StatusCode = !string.IsNullOrEmpty(token) ? (int)HttpStatusCode.OK : (int)HttpStatusCode.BadRequest,
-                    Body = JsonConvert.SerializeObject(token),
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Body = JsonConvert.SerializeObject(resultadoValidacaoUsuario.Erros.First()),
                     Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
                 };
             }
 
+            var nomeUsuario = resultadoValidacaoUsuario.Value;
+            var resultadoCadastroUsuario = await cognitoService.SignUp(nomeUsuario);
+            if (!resultadoCadastroUsuario.Sucesso)
+            {
+                return new APIGatewayProxyResponse
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Body = JsonConvert.SerializeObject(resultadoCadastroUsuario.Erros.First()),
+                    Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
+                };
+            }
+
+            var resultadoLogin = await cognitoService.SignIn(nomeUsuario);
+            if (!resultadoLogin.Sucesso)
+            {
+                return new APIGatewayProxyResponse
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Body = JsonConvert.SerializeObject(resultadoLogin.Erros.First()),
+                    Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
+                };
+            }
+
+            //gravar cliente no DB
+
+            var token = resultadoLogin.Value;
             return new APIGatewayProxyResponse
             {
-                StatusCode = (int)HttpStatusCode.BadRequest,
-                Body = JsonConvert.SerializeObject("An error occurred while signing up."),
+                StatusCode = !string.IsNullOrEmpty(token) ? (int)HttpStatusCode.OK : (int)HttpStatusCode.BadRequest,
+                Body = JsonConvert.SerializeObject(token),
                 Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
             };
         }
@@ -92,5 +102,19 @@ public class Functions
             Console.WriteLine("Auth Lambda response error: " + ex.Message);
             throw new Exception(ex.Message);
         }
+    }
+
+    private static Resultado<string> ObterNomeUsuario(APIGatewayProxyRequest request, AWSOptions awsOptions)
+    {
+        const string NOME_QUERY_STRING = "cpf";
+
+        bool cpfFoiInformado = request.QueryStringParameters.Any(x => x.Key == NOME_QUERY_STRING && !string.IsNullOrEmpty(x.Value) && !string.IsNullOrWhiteSpace(x.Value));
+        if (!cpfFoiInformado) return Resultado.Ok(awsOptions.UserTechLanches);
+
+        if (!ValidatorCPF.Validar(request.QueryStringParameters[NOME_QUERY_STRING]))
+            return Resultado.Falha<string>("CPF Inválido");
+
+        string cpfLimpo = ValidatorCPF.LimparCpf(request.QueryStringParameters[NOME_QUERY_STRING]);
+        return Resultado.Ok(cpfLimpo);
     }
 }
