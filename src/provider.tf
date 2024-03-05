@@ -1,5 +1,5 @@
 terraform {
-   backend "s3" {
+  backend "s3" {
     bucket = "techlanches-terraform"
     key    = "techlanches-lambda-auth/terraform.tfstate"
     region = "us-east-1"
@@ -7,5 +7,5 @@ terraform {
 }
 
 provider "aws" {
-  region  = var.region
+  region = var.region
 }
