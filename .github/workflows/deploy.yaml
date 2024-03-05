@@ -1,0 +1,41 @@
+name: .NET Build and Deploy
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+jobs:
+  build:
+   runs-on: ubuntu-latest
+   steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+  
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 8.x
+        
+    - name: Login to AWS
+      uses: aws-actions/configure-aws-credentials@v3
+      with:          
+        aws-region: 'us-east-1'
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+
+    - name: Configure AWS Dotnet CLI
+      run: dotnet tool install -g Amazon.Lambda.Tools
+      
+    - name: Restore NuGet packages
+      run: dotnet restore src/Serverless/**/*.csproj
+  
+    - name: Build
+      run: dotnet build src/Serverless/**/*.csproj --no-restore
+
+    - name: Prepare package
+      run: dotnet lambda package --project-location  src/Serverless/**/ --output-package auth_lambda.zip --configuration Release --framework net8.0
+
+    - name: Deploy to AWS
+      run: aws lambda update-function-code --function-name tech-lanches-lambda --zip-file fileb://./auth_lambda.zip
