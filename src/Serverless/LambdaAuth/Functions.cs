@@ -112,7 +112,7 @@ public class Functions
         if (!cpfFoiInformado) return Resultado.Ok(awsOptions.UserTechLanches);
 
         if (!ValidatorCPF.Validar(request.QueryStringParameters[NOME_QUERY_STRING]))
-            return Resultado.Falha<string>("CPF Inválido");
+            return Resultado.Falha<string>("O CPF informado está inválido");
 
         string cpfLimpo = ValidatorCPF.LimparCpf(request.QueryStringParameters[NOME_QUERY_STRING]);
         return Resultado.Ok(cpfLimpo);
