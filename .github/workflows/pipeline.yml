@@ -142,7 +142,7 @@ jobs:
         run: dotnet build Serverless/**/*.csproj
 
       - name: Prepare package
-        run: dotnet lambda package --project-location  Serverless/**/ --output-package src/Serverless/auth_lambda.zip --configuration Release --framework net8.0
+        run: dotnet lambda package --project-location  Serverless/**/ --output-package Serverless/auth_lambda.zip --configuration Release --framework net8.0
       
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
