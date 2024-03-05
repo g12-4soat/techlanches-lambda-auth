@@ -1,6 +1,6 @@
 resource "aws_lambda_function" "tech_lanches_lambda" {
   function_name = "tech-lanches-lambda"
-  filename = "Serverless/LambdaAuth/bin/Release/net8.0/LambdaAuth.zip"
+  filename = "Serverless/auth_lambda.zip"
   handler = "TechLanchesLambda::TechLanchesLambda.Functions_LambdaAuth_Generated::LambdaAuth"
   runtime = "dotnet8"
   role = var.arn
