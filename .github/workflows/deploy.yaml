@@ -38,4 +38,4 @@ jobs:
       run: dotnet lambda package --project-location  src/Serverless/**/ --output-package auth_lambda.zip --configuration Release --framework net8.0
 
     - name: Deploy to AWS
-      run: aws lambda update-function-code --function-name tech-lanches-lambda --zip-file fileb://./lambda_auth.zip
+      run: aws lambda update-function-code --function-name tech-lanches-lambda --zip-file fileb://./auth_lambda.zip
