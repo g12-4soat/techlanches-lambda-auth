@@ -11,8 +11,11 @@ jobs:
 
 ##############################################################
 
-  build-zip-lambda:
+  build:
    runs-on: ubuntu-latest
+   defaults:
+        run:
+          working-directory: src
    steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -21,33 +24,19 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 8.x
-
-    - name: Login to AWS
-      uses: aws-actions/configure-aws-credentials@v3
-      with:          
-        aws-region: 'us-east-1'
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-  
-    - name: Configure AWS Dotnet CLI
-      run: dotnet tool install -g Amazon.Lambda.Tools
-  
+        
     - name: Restore NuGet packages
-      run: dotnet restore src/Serverless/**/*.csproj
+      run: dotnet restore Serverless/**/*.csproj
   
     - name: Build
-      run: dotnet build src/Serverless/**/*.csproj
-
-    - name: Prepare package
-      run: dotnet lambda package --project-location  src/Serverless/**/ --output-package auth_lambda.zip --configuration Release --framework net8.0
+      run: dotnet build Serverless/**/*.csproj
 
 ##############################################################
 
   tf-test:
     name: Terraform Test
     needs: 
-      - build-zip-lambda
+      - build
     runs-on: ubuntu-latest
 
     defaults:
@@ -143,6 +132,18 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
 
+      - name: Configure AWS Dotnet CLI
+        run: dotnet tool install -g Amazon.Lambda.Tools
+  
+      - name: Restore NuGet packages
+        run: dotnet restore Serverless/**/*.csproj
+  
+      - name: Build
+        run: dotnet build Serverless/**/*.csproj
+
+      - name: Prepare package
+        run: dotnet lambda package --project-location  Serverless/**/ --output-package auth_lambda.zip --configuration Release --framework net8.0
+      
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
 
@@ -161,7 +162,6 @@ jobs:
   deploy:
      needs: 
       - tf-deploy
-
     
      #if: github.ref == 'refs/heads/release' || github.ref == 'refs/heads/main'
     
