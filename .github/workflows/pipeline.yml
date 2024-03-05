@@ -13,6 +13,9 @@ jobs:
 
   build:
    runs-on: ubuntu-latest
+   defaults:
+        run:
+          working-directory: src
    steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -21,12 +24,12 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 8.x
-  
+        
     - name: Restore NuGet packages
-      run: dotnet restore src/Serverless/**/*.csproj
+      run: dotnet restore Serverless/**/*.csproj
   
     - name: Build
-      run: dotnet build src/Serverless/**/*.csproj
+      run: dotnet build Serverless/**/*.csproj
 
 ##############################################################
 
@@ -129,6 +132,18 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
 
+      - name: Configure AWS Dotnet CLI
+        run: dotnet tool install -g Amazon.Lambda.Tools
+  
+      - name: Restore NuGet packages
+        run: dotnet restore Serverless/**/*.csproj
+  
+      - name: Build
+        run: dotnet build Serverless/**/*.csproj
+
+      - name: Prepare package
+        run: dotnet lambda package --project-location  Serverless/**/ --output-package auth_lambda.zip --configuration Release --framework net8.0
+      
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
 
@@ -147,7 +162,6 @@ jobs:
   deploy:
      needs: 
       - tf-deploy
-
     
      #if: github.ref == 'refs/heads/release' || github.ref == 'refs/heads/main'
     
