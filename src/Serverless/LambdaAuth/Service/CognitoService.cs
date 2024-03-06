@@ -2,6 +2,7 @@
 using Amazon.CognitoIdentityProvider;
 using Amazon.CognitoIdentityProvider.Model;
 using Amazon.Extensions.CognitoAuthentication;
+using Amazon.Extensions.NETCore.Setup;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using TechLanchesLambda.AWS.Options;
@@ -15,8 +16,6 @@ public interface ICognitoService
     Task<Resultado> SignUp(User user);
     Task<Resultado<TokenResult>> SignIn(string userName);
 }
-
-
 
 public class User
 {
@@ -38,11 +37,11 @@ public class User
 
 public class CognitoService : ICognitoService
 {
-    private readonly AWSOptions _awsOptions;
+    private readonly AWS.Options.AWSOptions _awsOptions;
     private readonly AmazonCognitoIdentityProviderClient _client;
     private readonly AmazonCognitoIdentityProviderClient _provider;
   
-    public CognitoService(IOptions<AWSOptions> awsOptions)
+    public CognitoService(IOptions<AWS.Options.AWSOptions> awsOptions)
     {
         ArgumentNullException.ThrowIfNull(awsOptions);
         _awsOptions = awsOptions.Value;
@@ -62,6 +61,10 @@ public class CognitoService : ICognitoService
             };
 
             var userCognito = await _client.AdminGetUserAsync(adminUser);
+            if (user.Cpf.Equals(_awsOptions.UserTechLanches))
+            {
+                return Resultado.Ok();
+            }
             return Resultado.Falha("Usuário já cadastrado. Por favor tente autenticar");
         }
         catch

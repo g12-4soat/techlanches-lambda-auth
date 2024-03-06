@@ -44,6 +44,19 @@ public class Functions
             }
 
             var user = resultadoValidacaoUsuario.Value;
+            if (user.Cpf.Equals(awsOptions.Value.UserTechLanches))
+            {
+                var resultadoCadastroUsuario = await cognitoService.SignUp(user);
+                if (!resultadoCadastroUsuario.Sucesso)
+                {
+                    return new APIGatewayProxyResponse
+                    {
+                        StatusCode = (int)HttpStatusCode.BadRequest,
+                        Body = JsonConvert.SerializeObject(resultadoCadastroUsuario.Erros.First()),
+                        Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
+                    };
+                }
+            }
             var resultadoLogin = await cognitoService.SignIn(user.Cpf);
 
             if (!resultadoLogin.Sucesso)
