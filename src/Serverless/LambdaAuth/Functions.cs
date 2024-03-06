@@ -2,11 +2,10 @@ using Amazon.Lambda.Annotations;
 using Amazon.Lambda.Annotations.APIGateway;
 using Amazon.Lambda.APIGatewayEvents;
 using Amazon.Lambda.Core;
-using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using System.Net;
-using TechLanchesLambda.Options;
+using TechLanchesLambda.AWS.Options;
 using TechLanchesLambda.Service;
 using TechLanchesLambda.Utils;
 
@@ -26,17 +25,14 @@ public class Functions
     public async Task<APIGatewayProxyResponse> LambdaAuth(APIGatewayProxyRequest request,
                                                   ILambdaContext context,
                                                   [FromServices] ICognitoService cognitoService,
-                                                  [FromServices] IConfiguration configuration)
+                                                  [FromServices] IOptions<AWSOptions> awsOptions)
     {
         try
         {
             context.Logger.LogInformation("Handling the 'GetAuth' Request");
 
-            var awsOptions = configuration.GetSection("AWS")
-               .Get<Options.AWSOptions>();
-
             ArgumentNullException.ThrowIfNull(awsOptions);
-            var resultadoValidacaoUsuario = ObterNomeUsuario(request, awsOptions, false);
+            var resultadoValidacaoUsuario = ObterNomeUsuario(request, awsOptions.Value, false);
             if (resultadoValidacaoUsuario.Falhou)
             {
                 return new APIGatewayProxyResponse
@@ -81,19 +77,16 @@ public class Functions
     [RestApi(LambdaHttpMethod.Post, "/cadastro")]
     public async Task<APIGatewayProxyResponse> LambdaCadastro(APIGatewayProxyRequest request,
                                                   ILambdaContext context,
-                                                  [FromServices] ICognitoService cognitoService, 
-                                                  [FromServices] IConfiguration configuration)
+                                                  [FromServices] ICognitoService cognitoService,
+                                                  [FromServices] IOptions<AWSOptions> awsOptions)
     {
         try
         {
             context.Logger.LogInformation("Handling the 'GetAuth' Request");
 
-            var awsOptions = configuration.GetSection("AWS")
-               .Get<Options.AWSOptions>();
-
             ArgumentNullException.ThrowIfNull(awsOptions);
 
-            var resultadoValidacaoUsuario = ObterNomeUsuario(request, awsOptions, true);
+            var resultadoValidacaoUsuario = ObterNomeUsuario(request, awsOptions.Value, true);
             if(resultadoValidacaoUsuario.Falhou)
             {
                 return new APIGatewayProxyResponse

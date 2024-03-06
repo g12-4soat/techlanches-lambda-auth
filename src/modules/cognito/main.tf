@@ -1,6 +1,9 @@
 resource "aws_cognito_user_pool" "tech_lanches_clientes_pool" {
-  name              = "tech-lanches-clientes-pool"
-  mfa_configuration = "OFF"
+  name                     = "tech-lanches-clientes-pool"
+  mfa_configuration        = "OFF"
+  alias_attributes         = ["email", "preferred_username"]
+  auto_verified_attributes = ["email"]
+
   username_configuration {
     case_sensitive = false
   }

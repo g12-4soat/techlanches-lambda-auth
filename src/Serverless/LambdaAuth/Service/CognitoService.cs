@@ -3,6 +3,8 @@ using Amazon.CognitoIdentityProvider;
 using Amazon.CognitoIdentityProvider.Model;
 using Amazon.Extensions.CognitoAuthentication;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using TechLanchesLambda.AWS.Options;
 using TechLanchesLambda.Utils;
 using static TechLanchesLambda.Service.CognitoService;
 
@@ -36,17 +38,14 @@ public class User
 
 public class CognitoService : ICognitoService
 {
-    private readonly Options.AWSOptions _awsOptions;
+    private readonly AWSOptions _awsOptions;
     private readonly AmazonCognitoIdentityProviderClient _client;
     private readonly AmazonCognitoIdentityProviderClient _provider;
   
-    public CognitoService(IConfiguration configuration)
+    public CognitoService(IOptions<AWSOptions> awsOptions)
     {
-        var awsOptions = configuration.GetSection("AWS")
-            .Get<Options.AWSOptions>();
-
         ArgumentNullException.ThrowIfNull(awsOptions);
-        _awsOptions = awsOptions;
+        _awsOptions = awsOptions.Value;
 
         _provider = new AmazonCognitoIdentityProviderClient(RegionEndpoint.GetBySystemName(_awsOptions.Region));
         _client = new AmazonCognitoIdentityProviderClient();

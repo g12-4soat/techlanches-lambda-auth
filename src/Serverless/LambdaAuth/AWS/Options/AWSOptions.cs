@@ -1,4 +1,4 @@
-namespace TechLanchesLambda.Options
+namespace TechLanchesLambda.AWS.Options
 {
     public class AWSOptions
     {
@@ -8,8 +8,5 @@ namespace TechLanchesLambda.Options
         public string UserTechLanches { get; set; } = string.Empty;
         public string EmailDefault { get; set; } = string.Empty;
         public string PasswordDefault { get; set; } = string.Empty;
-        public string AccessKey { get; set; } = string.Empty;
-        public string SecretKey { get; set; } = string.Empty;
-        public string Token { get; set; } = string.Empty;
     }
 }
