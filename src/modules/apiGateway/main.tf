@@ -36,10 +36,18 @@ resource "aws_api_gateway_deployment" "gateway_deployment" {
 }
 
 # Saiba mais: http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-control-access-using-iam-policies-to-invoke-api.html
-resource "aws_lambda_permission" "apigateway_lambda" {
+resource "aws_lambda_permission" "apigateway_lambda_auth" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = var.nome_lambda
+  function_name = var.nome_lambda_auth
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.tech_lanches_api_gateweay.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "apigateway_lambda_cadastro" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = var.nome_lambda_cadastro
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.tech_lanches_api_gateweay.execution_arn}/*/*"
 }

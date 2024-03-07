@@ -1,13 +1,14 @@
 module "lambda" {
   source = "./modules/lambda"
-  arn    = var.arn_lab_role
+  arn    = data.aws_iam_role.name.arn
 }
 
 module "apiGateway" {
   source      = "./modules/apiGateway"
-  arn         = module.lambda.lambda_arn
+  arn         = module.lambda.lambda_arn_auth
   environment = var.environment
-  nome_lambda = module.lambda.nome_lambda
+  nome_lambda_auth = module.lambda.nome_lambda_auth
+  nome_lambda_cadastro = module.lambda.nome_lambda_cadastro
 }
 
 module "cognito" {
