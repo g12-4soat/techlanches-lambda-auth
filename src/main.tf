@@ -4,8 +4,9 @@ module "lambda" {
 }
 
 module "apiGateway" {
-  source      = "./modules/apiGateway"
-  arn         = module.lambda.lambda_arn_auth
+  source = "./modules/apiGateway"
+  arn_lambda_auth = module.lambda.lambda_arn_auth
+  arn_lambda_cadastro = module.lambda.lambda_arn_cadastro
   environment = var.environment
   nome_lambda_auth = module.lambda.nome_lambda_auth
   nome_lambda_cadastro = module.lambda.nome_lambda_cadastro

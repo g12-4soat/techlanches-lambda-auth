@@ -1,5 +1,9 @@
-variable "arn" {
-  description = "ARN da Lambda"
+variable "arn_lambda_auth" {
+  description = "ARN da Lambda auth"
+}
+
+variable "arn_lambda_cadastro" {
+  description = "ARN da Lambda Cadastro"
 }
 
 variable "environment" {

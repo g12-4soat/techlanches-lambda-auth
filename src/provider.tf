@@ -1,6 +1,6 @@
 terraform {
   backend "s3" {
-    bucket = "techlanches-terraform-auth"
+    bucket = "techlanches-terraform"
     key    = "techlanches-lambda-auth/terraform.tfstate"
     region = "us-east-1"
   }
