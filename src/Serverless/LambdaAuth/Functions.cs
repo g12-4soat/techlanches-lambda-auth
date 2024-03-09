@@ -29,7 +29,7 @@ public class Functions
     {
         try
         {
-            context.Logger.LogInformation("Handling the 'GetAuth' Request");
+            context.Logger.LogInformation("Handling the 'LambdaAuth' Request");
 
             ArgumentNullException.ThrowIfNull(awsOptions);
             var resultadoValidacaoUsuario = ObterNomeUsuario(request, awsOptions.Value, false);
@@ -69,8 +69,6 @@ public class Functions
                 };
             }
 
-            //gravar cliente no DB
-
             var tokenResult = resultadoLogin.Value;
             return new APIGatewayProxyResponse
             {
@@ -95,7 +93,7 @@ public class Functions
     {
         try
         {
-            context.Logger.LogInformation("Handling the 'GetAuth' Request");
+            context.Logger.LogInformation("Handling the 'LambdaCadastro' Request");
 
             ArgumentNullException.ThrowIfNull(awsOptions);
 
@@ -143,8 +141,6 @@ public class Functions
                 };
             }
 
-            //gravar cliente no DB
-
             var tokenResult = resultadoLogin.Value;
             return new APIGatewayProxyResponse
             {
@@ -155,31 +151,46 @@ public class Functions
         }
         catch (Exception ex)
         {
-            Console.WriteLine("Auth Lambda response error: " + ex.Message);
+            Console.WriteLine("Cadastro Lambda response error: " + ex.Message);
             throw new Exception(ex.Message);
         }
     }
 
     private static Resultado<User> ObterNomeUsuario(APIGatewayProxyRequest request, AWSOptions awsOptions, bool ehCadastro)
     {
-        const string NOME_QUERY_STRING = "cpf";
+        const string CPF_QUERY_STRING = "cpf";
+        const string NOME_QUERY_STRING = "nome";
+        const string EMAIL_QUERY_STRING = "email";
 
-        bool cpfFoiInformado = request.QueryStringParameters.Any(x => x.Key == NOME_QUERY_STRING && !string.IsNullOrEmpty(x.Value) && !string.IsNullOrWhiteSpace(x.Value));
-        if (!cpfFoiInformado && !ehCadastro) return Resultado.Ok(new User { Nome = awsOptions.UserTechLanches, Email = awsOptions.EmailDefault, Cpf = awsOptions.UserTechLanches});
+        bool cpfFoiInformado = request.QueryStringParameters.Any(x => x.Key == CPF_QUERY_STRING && 
+                                                                 !string.IsNullOrEmpty(x.Value) && 
+                                                                 !string.IsNullOrWhiteSpace(x.Value));
+
+        if (!ehCadastro && !cpfFoiInformado) 
+            return Resultado.Ok(new User 
+            { 
+                Nome = awsOptions.UserTechLanches, 
+                Email = awsOptions.EmailDefault, 
+                Cpf = awsOptions.UserTechLanches
+            });
 
         if (ehCadastro && !cpfFoiInformado)
             return Resultado.Falha<User>("O CPF não foi informado para cadastro.");
 
-        if (!ValidatorCPF.Validar(request.QueryStringParameters[NOME_QUERY_STRING]))
-            return Resultado.Falha<User>("O CPF informado está inválido");
+        if (!ValidatorCPF.Validar(request.QueryStringParameters[CPF_QUERY_STRING]))
+            return Resultado.Falha<User>("O CPF informado está inválido.");
 
-        string cpfLimpo = ValidatorCPF.LimparCpf(request.QueryStringParameters[NOME_QUERY_STRING]);
+        string cpfLimpo = ValidatorCPF.LimparCpf(request.QueryStringParameters[CPF_QUERY_STRING]);
 
         var user = new User
         {
             Cpf = cpfLimpo,
-            Email = request.QueryStringParameters["email"],
-            Nome = request.QueryStringParameters["nome"]
+            Email = request.QueryStringParameters.Any(x => x.Key == EMAIL_QUERY_STRING &&
+                                                      !string.IsNullOrEmpty(x.Value) &&
+                                                      !string.IsNullOrWhiteSpace(x.Value)) ? EMAIL_QUERY_STRING : String.Empty,
+            Nome = request.QueryStringParameters.Any(x => x.Key == NOME_QUERY_STRING &&
+                                                     !string.IsNullOrEmpty(x.Value) &&
+                                                     !string.IsNullOrWhiteSpace(x.Value)) ? NOME_QUERY_STRING : String.Empty,
         };
 
         return Resultado.Ok(user);

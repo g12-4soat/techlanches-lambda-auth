@@ -2,10 +2,7 @@
 using Amazon.CognitoIdentityProvider;
 using Amazon.CognitoIdentityProvider.Model;
 using Amazon.Extensions.CognitoAuthentication;
-using Amazon.Extensions.NETCore.Setup;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
-using TechLanchesLambda.AWS.Options;
 using TechLanchesLambda.Utils;
 using static TechLanchesLambda.Service.CognitoService;
 
