@@ -3,33 +3,15 @@ using Amazon.CognitoIdentityProvider;
 using Amazon.CognitoIdentityProvider.Model;
 using Amazon.Extensions.CognitoAuthentication;
 using Microsoft.Extensions.Options;
+using TechLanchesLambda.DTOs;
 using TechLanchesLambda.Utils;
-using static TechLanchesLambda.Service.CognitoService;
 
 namespace TechLanchesLambda.Service;
 
 public interface ICognitoService
 {
-    Task<Resultado> SignUp(User user);
-    Task<Resultado<TokenResult>> SignIn(string userName);
-}
-
-public class User
-{
-    public string Cpf { get; set; }
-    public string Email { get; set; }
-    public string Nome { get; set; }
-
-    public bool Validar()
-    {
-        if (string.IsNullOrEmpty(Cpf) || string.IsNullOrWhiteSpace(Cpf))
-            return false;
-        if (string.IsNullOrEmpty(Email) || string.IsNullOrWhiteSpace(Email))
-            return false;
-        if (string.IsNullOrEmpty(Nome) || string.IsNullOrWhiteSpace(Nome))
-            return false;
-        return true;
-    }
+    Task<Resultado> SignUp(UsuarioDto usuario);
+    Task<Resultado<TokenDto>> SignIn(string userName);
 }
 
 public class CognitoService : ICognitoService
@@ -47,76 +29,87 @@ public class CognitoService : ICognitoService
         _client = new AmazonCognitoIdentityProviderClient();
     }
 
-    public async Task<Resultado> SignUp(User user)
+    public async Task<Resultado> SignUp(UsuarioDto user)
+    {
+        if (await UsuarioJaExiste(user))
+        {
+            var ehUsuarioPadrao = user.Cpf.Equals(_awsOptions.UserTechLanches);
+            return ehUsuarioPadrao ? Resultado.Ok() : Resultado.Falha("Usuário já cadastrado. Por favor tente autenticar");
+        }
+
+        var input = new SignUpRequest
+        {
+            ClientId = _awsOptions.UserPoolClientId,
+            Username = user.Cpf,
+            Password = _awsOptions.PasswordDefault,
+            UserAttributes = new List<AttributeType>
+            {
+                new AttributeType {Name = "email", Value = user.Email },
+                new AttributeType {Name = "name", Value = user.Nome }
+            }
+        };
+
+        var signUpResponse = await _client.SignUpAsync(input);
+
+        if (signUpResponse.HttpStatusCode != System.Net.HttpStatusCode.OK)
+            return Resultado.Falha("Houve algo de errado ao cadastrar o usuário");
+
+        var confirmRequest = new AdminConfirmSignUpRequest
+        {
+            Username = user.Cpf,
+            UserPoolId = _awsOptions.UserPoolId
+        };
+
+        await _client.AdminConfirmSignUpAsync(confirmRequest);
+        return Resultado.Ok();
+    }
+
+    private async Task<bool> UsuarioJaExiste(UsuarioDto usuario)
     {
         try
         {
             var adminUser = new AdminGetUserRequest()
             {
-                Username = user.Cpf,
+                Username = usuario.Cpf,
                 UserPoolId = _awsOptions!.UserPoolId
             };
 
-            var userCognito = await _client.AdminGetUserAsync(adminUser);
-            if (user.Cpf.Equals(_awsOptions.UserTechLanches))
-            {
-                return Resultado.Ok();
-            }
-            return Resultado.Falha("Usuário já cadastrado. Por favor tente autenticar");
+            await _client.AdminGetUserAsync(adminUser);
+            return true;
         }
-        catch
+        catch (UserNotFoundException)
         {
-            var input = new SignUpRequest
-            {
-                ClientId = _awsOptions.UserPoolClientId,
-                Username = user.Cpf,
-                Password = _awsOptions.PasswordDefault,
-                UserAttributes = new List<AttributeType>
-                {
-                    new AttributeType {Name = "email", Value = user.Email },
-                    new AttributeType {Name = "name", Value = user.Nome }
-                }
-            };
-
-            var signUpResponse = await _client.SignUpAsync(input);
-
-            if (signUpResponse.HttpStatusCode != System.Net.HttpStatusCode.OK)
-                return Resultado.Falha("Houve algo de errado ao cadastrar o usuário");
-
-            var confirmRequest = new AdminConfirmSignUpRequest
-            {
-                Username = user.Cpf,
-                UserPoolId = _awsOptions.UserPoolId
-            };
-
-            await _client.AdminConfirmSignUpAsync(confirmRequest);
-            return Resultado.Ok();
+            return false;
         }
     }
 
-    public async Task<Resultado<TokenResult>> SignIn(string userName)
+    public async Task<Resultado<TokenDto>> SignIn(string userName)
     {
-        using var provider = _provider;
-        var userPool = new CognitoUserPool(_awsOptions.UserPoolId, _awsOptions.UserPoolClientId, provider);
-        var user = new CognitoUser(userName, _awsOptions.UserPoolClientId, userPool, provider);
-
-        var authRequest = new InitiateAdminNoSrpAuthRequest
+        try
         {
-            Password = _awsOptions.PasswordDefault
-        };
+            using var provider = _provider;
+            var userPool = new CognitoUserPool(_awsOptions.UserPoolId, _awsOptions.UserPoolClientId, provider);
+            var user = new CognitoUser(userName, _awsOptions.UserPoolClientId, userPool, provider);
 
-        var authResponse = await user.StartWithAdminNoSrpAuthAsync(authRequest);
+            var authRequest = new InitiateAdminNoSrpAuthRequest
+            {
+                Password = _awsOptions.PasswordDefault
+            };
 
-        if (authResponse.AuthenticationResult != null)
-            return Resultado.Ok(new TokenResult { AccessToken = authResponse.AuthenticationResult.AccessToken, TokenId = authResponse.AuthenticationResult.IdToken });
+            var authResponse = await user.StartWithAdminNoSrpAuthAsync(authRequest);
 
-        return Resultado.Falha<TokenResult>("Ocorreu um erro ao fazer login.");
-    }
+            if (authResponse.AuthenticationResult != null)
+                return Resultado.Ok(new TokenDto(authResponse.AuthenticationResult.IdToken, authResponse.AuthenticationResult.AccessToken));
 
-    public class TokenResult
-    {
-        public string TokenId { get; set; }
-        public string AccessToken { get; set; }
-
+            return Resultado.Falha<TokenDto>("Ocorreu um erro ao fazer login.");
+        }
+        catch (UserNotConfirmedException)
+        {
+            return Resultado.Falha<TokenDto>("Usuário não confirmado.");
+        }
+        catch (UserNotFoundException)
+        {
+            return Resultado.Falha<TokenDto>("Usuário não existente com os dados informados.");
+        }
     }
 }

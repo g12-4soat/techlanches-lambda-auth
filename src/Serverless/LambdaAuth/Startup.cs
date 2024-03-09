@@ -26,10 +26,6 @@ public class Startup
 
         services.Configure<AWSOptions>(configuration);
 
-        //var serviceProvider = services.BuildServiceProvider();
-
-        //serviceProvider.GetRequiredService<IOptions<AWSOptions>>();
-
         services.AddLogging();
 
         services.AddAuthentication();

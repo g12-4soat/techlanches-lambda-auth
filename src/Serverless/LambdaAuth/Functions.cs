@@ -3,19 +3,22 @@ using Amazon.Lambda.Annotations.APIGateway;
 using Amazon.Lambda.APIGatewayEvents;
 using Amazon.Lambda.Core;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
-using System.Net;
 using TechLanchesLambda.AWS.Options;
+using TechLanchesLambda.DTOs;
 using TechLanchesLambda.Service;
 using TechLanchesLambda.Utils;
+using TechLanchesLambda.Validations;
 
-// Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
 
 namespace TechLanchesLambda;
 
 public class Functions
 {
+    private const string CPF_QUERY_STRING = "cpf";
+    private const string NOME_QUERY_STRING = "nome";
+    private const string EMAIL_QUERY_STRING = "email";
+
     public Functions()
     {
     }
@@ -30,52 +33,27 @@ public class Functions
         try
         {
             context.Logger.LogInformation("Handling the 'LambdaAuth' Request");
-
             ArgumentNullException.ThrowIfNull(awsOptions);
-            var resultadoValidacaoUsuario = ObterNomeUsuario(request, awsOptions.Value, false);
-            if (resultadoValidacaoUsuario.Falhou)
-            {
-                return new APIGatewayProxyResponse
-                {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Body = JsonConvert.SerializeObject(resultadoValidacaoUsuario.Erros.First()),
-                    Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
-                };
-            }
 
-            var user = resultadoValidacaoUsuario.Value;
-            if (user.Cpf.Equals(awsOptions.Value.UserTechLanches))
+            var usuario = ObterUsuario(request, awsOptions.Value, ehCadastro: false);
+            var usuarioEhPadrao = usuario.Cpf.Equals(awsOptions.Value.UserTechLanches);
+            if (usuarioEhPadrao)
             {
-                var resultadoCadastroUsuario = await cognitoService.SignUp(user);
+                var resultadoCadastroUsuario = await cognitoService.SignUp(usuario);
                 if (!resultadoCadastroUsuario.Sucesso)
                 {
-                    return new APIGatewayProxyResponse
-                    {
-                        StatusCode = (int)HttpStatusCode.BadRequest,
-                        Body = JsonConvert.SerializeObject(resultadoCadastroUsuario.Erros.First()),
-                        Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
-                    };
+                    return Response.BadRequest(resultadoCadastroUsuario.Notificacoes);
                 }
             }
-            var resultadoLogin = await cognitoService.SignIn(user.Cpf);
 
+            var resultadoLogin = await cognitoService.SignIn(usuario.Cpf);
             if (!resultadoLogin.Sucesso)
             {
-                return new APIGatewayProxyResponse
-                {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Body = JsonConvert.SerializeObject(resultadoLogin.Erros.First()),
-                    Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
-                };
+                return Response.BadRequest(resultadoLogin.Notificacoes);
             }
 
             var tokenResult = resultadoLogin.Value;
-            return new APIGatewayProxyResponse
-            {
-                StatusCode = !string.IsNullOrEmpty(tokenResult.AccessToken) ? (int)HttpStatusCode.OK : (int)HttpStatusCode.BadRequest,
-                Body = JsonConvert.SerializeObject(tokenResult),
-                Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
-            };
+            return !string.IsNullOrEmpty(tokenResult.AccessToken) ? Response.Ok(tokenResult) : Response.BadRequest("Não possui token"); 
         }
         catch (Exception ex)
         {
@@ -97,57 +75,28 @@ public class Functions
 
             ArgumentNullException.ThrowIfNull(awsOptions);
 
-            var resultadoValidacaoUsuario = ObterNomeUsuario(request, awsOptions.Value, true);
-            if(resultadoValidacaoUsuario.Falhou)
-            {
-                return new APIGatewayProxyResponse
-                {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Body = JsonConvert.SerializeObject(resultadoValidacaoUsuario.Erros.First()),
-                    Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
-                };
-            }
+            var usuario = ObterUsuario(request, awsOptions.Value, ehCadastro: true);
 
-            var user = resultadoValidacaoUsuario.Value;
-            var userValido = user.Validar();
-            if(!userValido)
+            var resultadoValidacaoUsuario = new UsuarioCadastroValidation().Validate(usuario);
+            if(!resultadoValidacaoUsuario.IsValid)
             {
-                return new APIGatewayProxyResponse
-                {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Body = JsonConvert.SerializeObject("Houve erro de validação"),
-                    Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
-                };
+                return Response.BadRequest(resultadoValidacaoUsuario.Errors.Select(x => new NotificacaoDto(x.ErrorMessage)).ToList());
             }
-            var resultadoCadastroUsuario = await cognitoService.SignUp(user);
+            
+            var resultadoCadastroUsuario = await cognitoService.SignUp(usuario);
             if (!resultadoCadastroUsuario.Sucesso)
             {
-                return new APIGatewayProxyResponse
-                {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Body = JsonConvert.SerializeObject(resultadoCadastroUsuario.Erros.First()),
-                    Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
-                };
+                return Response.BadRequest(resultadoCadastroUsuario.Notificacoes);
             }
 
-            var resultadoLogin = await cognitoService.SignIn(user.Cpf);
+            var resultadoLogin = await cognitoService.SignIn(usuario.Cpf);
             if (!resultadoLogin.Sucesso)
             {
-                return new APIGatewayProxyResponse
-                {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Body = JsonConvert.SerializeObject(resultadoLogin.Erros.First()),
-                    Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
-                };
+                return Response.BadRequest(resultadoLogin.Notificacoes);
             }
 
             var tokenResult = resultadoLogin.Value;
-            return new APIGatewayProxyResponse
-            {
-                StatusCode = !string.IsNullOrEmpty(tokenResult.AccessToken) ? (int)HttpStatusCode.OK : (int)HttpStatusCode.BadRequest,
-                Body = JsonConvert.SerializeObject(tokenResult),
-                Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
-            };
+            return !string.IsNullOrEmpty(tokenResult.AccessToken) ? Response.Ok(tokenResult) : Response.BadRequest("Não possui token");
         }
         catch (Exception ex)
         {
@@ -156,43 +105,31 @@ public class Functions
         }
     }
 
-    private static Resultado<User> ObterNomeUsuario(APIGatewayProxyRequest request, AWSOptions awsOptions, bool ehCadastro)
+    private UsuarioDto ObterUsuario(APIGatewayProxyRequest request, AWSOptions awsOptions, bool ehCadastro)
     {
-        const string CPF_QUERY_STRING = "cpf";
-        const string NOME_QUERY_STRING = "nome";
-        const string EMAIL_QUERY_STRING = "email";
+        if (!CpfFoiInformado(request) && !ehCadastro)
+            return new UsuarioDto(awsOptions.UserTechLanches, awsOptions.EmailDefault, awsOptions.UserTechLanches);
 
-        bool cpfFoiInformado = request.QueryStringParameters.Any(x => x.Key == CPF_QUERY_STRING && 
-                                                                 !string.IsNullOrEmpty(x.Value) && 
-                                                                 !string.IsNullOrWhiteSpace(x.Value));
-
-        if (!ehCadastro && !cpfFoiInformado) 
-            return Resultado.Ok(new User 
-            { 
-                Nome = awsOptions.UserTechLanches, 
-                Email = awsOptions.EmailDefault, 
-                Cpf = awsOptions.UserTechLanches
-            });
-
-        if (ehCadastro && !cpfFoiInformado)
-            return Resultado.Falha<User>("O CPF não foi informado para cadastro.");
-
-        if (!ValidatorCPF.Validar(request.QueryStringParameters[CPF_QUERY_STRING]))
-            return Resultado.Falha<User>("O CPF informado está inválido.");
-
+        string cpf = request.QueryStringParameters[CPF_QUERY_STRING];
         string cpfLimpo = ValidatorCPF.LimparCpf(request.QueryStringParameters[CPF_QUERY_STRING]);
+        string email = ObterValorQueryString(request, EMAIL_QUERY_STRING);
+        string nome = ObterValorQueryString(request, NOME_QUERY_STRING);
 
-        var user = new User
-        {
-            Cpf = cpfLimpo,
-            Email = request.QueryStringParameters.Any(x => x.Key == EMAIL_QUERY_STRING &&
-                                                      !string.IsNullOrEmpty(x.Value) &&
-                                                      !string.IsNullOrWhiteSpace(x.Value)) ? EMAIL_QUERY_STRING : String.Empty,
-            Nome = request.QueryStringParameters.Any(x => x.Key == NOME_QUERY_STRING &&
+        var user = new UsuarioDto(string.IsNullOrEmpty(cpfLimpo) ? cpf : cpfLimpo, email, nome);
+        return user;
+    }
+
+    private bool CpfFoiInformado(APIGatewayProxyRequest request)
+    {
+        return request.QueryStringParameters.Any(x => x.Key == CPF_QUERY_STRING &&
+                                                                 !string.IsNullOrEmpty(x.Value) &&
+                                                                 !string.IsNullOrWhiteSpace(x.Value));
+    }
+
+    private string ObterValorQueryString(APIGatewayProxyRequest request, string key)
+    {
+        return request.QueryStringParameters.Any(x => x.Key == key &&
                                                      !string.IsNullOrEmpty(x.Value) &&
-                                                     !string.IsNullOrWhiteSpace(x.Value)) ? NOME_QUERY_STRING : String.Empty,
-        };
-
-        return Resultado.Ok(user);
+                                                     !string.IsNullOrWhiteSpace(x.Value)) ? request.QueryStringParameters[key] : string.Empty;
     }
 }

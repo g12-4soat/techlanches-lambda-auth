@@ -19,19 +19,6 @@
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "Environment": {
-          "Variables": {
-            "Region": "us-east-1",
-            "UserPoolId": "us-east-1_FI9vWiND3",
-            "UserPoolClientId": "50vqcv01qh0cflkthrvs1jal30",
-            "UserTechLanches": "usertechlanches",
-            "EmailDefault": "g12.4soat.fiap@outlook.com",
-            "PasswordDefault": "Test1234@",
-            "AccessKey": "ASIAYS2NQCBYNFFQDE43",
-            "SecretKey": "KfWhWTJfvOy/a44HLWj43a9Ih2Rblt2WWItYYWy3",
-            "Token": "FwoGZXIvYXdzECEaDG3UmAC/77zlERqTsSLOAZbXnu/Tzsj1CUKRvgud76EDxEBBBqcC9B0N2ANx8/Fx2zJjJgGX5KyMfOpphgDUpNxGmmvFkv8CpQ3H6ZeT+hRgRjOLt90eChdYdiUEoG1OBSq6FROB1Qmlq8SnI0mehN7QryOIkfWjjRRdg36AplIJvE3gYkLRmsMyroDUjSeM3Rzd/xEJe20YJEKzGAe+v3jlJX0X6TzLvq6mKmArfYzWg8Pp32/JLS6m6lpcbos217jYkseUaBByTuOJGRk6VvXHf854fXY/VNTwZGE4KLGQ/64GMi1kGtdqN8UNuQaeDbLfjfbw03s3zY5HMlWBLsM07YB1a/4ax60cZFGZgUC6djQ="
-          }
-        },
         "PackageType": "Zip",
         "Handler": "TechLanchesLambda::TechLanchesLambda.Functions_LambdaAuth_Generated::LambdaAuth",
         "Events": {
