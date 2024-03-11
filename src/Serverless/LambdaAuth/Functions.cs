@@ -3,6 +3,8 @@ using Amazon.Lambda.Annotations.APIGateway;
 using Amazon.Lambda.APIGatewayEvents;
 using Amazon.Lambda.Core;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
+using System.Text.RegularExpressions;
 using TechLanchesLambda.AWS.Options;
 using TechLanchesLambda.DTOs;
 using TechLanchesLambda.Service;
@@ -15,10 +17,6 @@ namespace TechLanchesLambda;
 
 public class Functions
 {
-    private const string CPF_QUERY_STRING = "cpf";
-    private const string NOME_QUERY_STRING = "nome";
-    private const string EMAIL_QUERY_STRING = "email";
-
     public Functions()
     {
     }
@@ -107,29 +105,22 @@ public class Functions
 
     private UsuarioDto ObterUsuario(APIGatewayProxyRequest request, AWSOptions awsOptions, bool ehCadastro)
     {
-        if (!CpfFoiInformado(request) && !ehCadastro)
+        var usuario = JsonConvert.DeserializeObject<UsuarioDto>(request.Body) ?? new UsuarioDto();
+        ArgumentNullException.ThrowIfNull(usuario);
+
+        if (!CpfFoiInformado(usuario) && !ehCadastro)
             return new UsuarioDto(awsOptions.UserTechLanches, awsOptions.EmailDefault, awsOptions.UserTechLanches);
 
-        string cpf = request.QueryStringParameters[CPF_QUERY_STRING];
-        string cpfLimpo = ValidatorCPF.LimparCpf(request.QueryStringParameters[CPF_QUERY_STRING]);
-        string email = ObterValorQueryString(request, EMAIL_QUERY_STRING);
-        string nome = ObterValorQueryString(request, NOME_QUERY_STRING);
-
+        string cpf = usuario.Cpf ?? string.Empty;
+        string cpfLimpo = ValidatorCPF.LimparCpf(cpf);
+        string email = usuario.Email ?? string.Empty;
+        string nome = usuario.Nome ?? string.Empty;
         var user = new UsuarioDto(string.IsNullOrEmpty(cpfLimpo) ? cpf : cpfLimpo, email, nome);
         return user;
     }
 
-    private bool CpfFoiInformado(APIGatewayProxyRequest request)
+    private bool CpfFoiInformado(UsuarioDto usuario)
     {
-        return request.QueryStringParameters.Any(x => x.Key == CPF_QUERY_STRING &&
-                                                                 !string.IsNullOrEmpty(x.Value) &&
-                                                                 !string.IsNullOrWhiteSpace(x.Value));
-    }
-
-    private string ObterValorQueryString(APIGatewayProxyRequest request, string key)
-    {
-        return request.QueryStringParameters.Any(x => x.Key == key &&
-                                                     !string.IsNullOrEmpty(x.Value) &&
-                                                     !string.IsNullOrWhiteSpace(x.Value)) ? request.QueryStringParameters[key] : string.Empty;
+        return !string.IsNullOrEmpty(usuario.Cpf) && !string.IsNullOrWhiteSpace(usuario.Cpf);
     }
 }
