@@ -1,0 +1,91 @@
+{
+	"info": {
+		"_postman_id": "e630caf5-6482-432a-aa48-f081ecdf1f1a",
+		"name": "LambdaTechLanches",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "17846603",
+		"_collection_link": "https://red-robot-133413.postman.co/workspace/Teste~2e4990a5-a525-4806-8c4c-49a4fd1761b8/collection/17846603-e630caf5-6482-432a-aa48-f081ecdf1f1a?action=share&source=collection_link&creator=17846603"
+	},
+	"item": [
+		{
+			"name": "Cadastro",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"cpf\": \"55673433611\",\r\n    \"email\": \"teste@teste.com\",\r\n    \"nome\": \"tech\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/Development/cadastro",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"Development",
+						"cadastro"
+					],
+					"query": [
+						{
+							"key": "cpf",
+							"value": "\"04255081026\"",
+							"disabled": true
+						},
+						{
+							"key": "email",
+							"value": "teste@teste.com",
+							"disabled": true
+						},
+						{
+							"key": "nome",
+							"value": "Nicolas",
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Auth - Identificado",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"cpf\": \"55673433611\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "{{baseUrl}}/Development/auth"
+			},
+			"response": []
+		},
+		{
+			"name": "Auth - Não Identificado",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"cpf\": \"\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "{{baseUrl}}/Development/auth"
+			},
+			"response": []
+		}
+	]
+}
