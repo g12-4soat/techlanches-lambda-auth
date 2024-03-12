@@ -41,7 +41,7 @@ jobs:
 
     defaults:
         run:
-          working-directory: src
+          working-directory: src/terraform
 
     steps:
       - name: Checkout code
@@ -112,7 +112,7 @@ jobs:
     needs: 
       - tf-test
 
-    if: github.ref == 'refs/heads/release' || github.ref == 'refs/heads/main'
+    #if: github.ref == 'refs/heads/release' || github.ref == 'refs/heads/main'
 
     runs-on: ubuntu-latest
 
@@ -148,13 +148,13 @@ jobs:
         uses: hashicorp/setup-terraform@v2
 
       - name: Prepare environment
-        run: terraform init 
+        run: terraform -chdir=terraform/ init 
 
       - name: Terraform Plan
-        run: terraform plan -lock=false -no-color -input=false
+        run: terraform -chdir=terraform/ plan -lock=false -no-color -input=false
 
       - name: Execute terraform apply
-        run: terraform apply -lock=false -auto-approve -input=false
+        run: terraform -chdir=terraform/ apply -lock=false -auto-approve -input=false
 
         
 ##############################################################
@@ -163,7 +163,7 @@ jobs:
      needs: 
       - tf-deploy
     
-     if: github.ref == 'refs/heads/release' || github.ref == 'refs/heads/main'
+     #if: github.ref == 'refs/heads/release' || github.ref == 'refs/heads/main'
     
      runs-on: ubuntu-latest
      steps:
@@ -195,8 +195,11 @@ jobs:
       - name: Prepare package
         run: dotnet lambda package --project-location  src/Serverless/**/ --output-package auth_lambda.zip --configuration Release --framework net8.0
   
-      - name: Deploy to AWS
-        run: aws lambda update-function-code --function-name tech-lanches-lambda --zip-file fileb://./auth_lambda.zip
+      - name: Deploy to AWS Lambda auth
+        run: aws lambda update-function-code --function-name tech-lanches-lambda-auth --zip-file fileb://./auth_lambda.zip
+      
+      - name: Deploy to AWS Lambda cadastro
+        run: aws lambda update-function-code --function-name tech-lanches-lambda-cadastro --zip-file fileb://./auth_lambda.zip
       
 ##############################################################
 

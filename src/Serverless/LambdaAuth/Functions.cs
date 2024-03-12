@@ -2,100 +2,56 @@ using Amazon.Lambda.Annotations;
 using Amazon.Lambda.Annotations.APIGateway;
 using Amazon.Lambda.APIGatewayEvents;
 using Amazon.Lambda.Core;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
-using System.Net;
-using TechLanchesLambda.Options;
+using System.Text.RegularExpressions;
+using TechLanchesLambda.AWS.Options;
+using TechLanchesLambda.DTOs;
 using TechLanchesLambda.Service;
 using TechLanchesLambda.Utils;
+using TechLanchesLambda.Validations;
 
-// Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
 
 namespace TechLanchesLambda;
 
 public class Functions
 {
-    /// <summary>
-    /// Default constructor that Lambda will invoke.
-    /// </summary>
     public Functions()
     {
     }
 
-    /// <summary>
-    /// A Lambda function to respond to HTTP Get methods from API Gateway
-    /// </summary>
-    /// <remarks>
-    /// This uses the <see href="https://github.com/aws/aws-lambda-dotnet/blob/master/Libraries/src/Amazon.Lambda.Annotations/README.md">Lambda Annotations</see> 
-    /// programming model to bridge the gap between the Lambda programming model and a more idiomatic .NET model.
-    /// 
-    /// This automatically handles reading parameters from an APIGatewayProxyRequest
-    /// as well as syncing the function definitions to serverless.template each time you build.
-    /// 
-    /// If you do not wish to use this model and need to manipulate the API Gateway 
-    /// objects directly, see the accompanying Readme.md for instructions.
-    /// </remarks>
-    /// <param name="context">Information about the invocation, function, and execution environment</param>
-    /// <returns>The response as an implicit <see cref="APIGatewayProxyResponse"/></returns>
     [LambdaFunction(Policies = "AWSLambdaBasicExecutionRole", MemorySize = 512, Timeout = 30)]
-    [RestApi(LambdaHttpMethod.Post, "/Auth")]
+    [RestApi(LambdaHttpMethod.Post, "/auth")]
     public async Task<APIGatewayProxyResponse> LambdaAuth(APIGatewayProxyRequest request,
                                                   ILambdaContext context,
-                                                  [FromServices] ICognitoService cognitoService, 
-                                                  [FromServices] IConfiguration configuration)
+                                                  [FromServices] ICognitoService cognitoService,
+                                                  [FromServices] IOptions<AWSOptions> awsOptions)
     {
         try
         {
-            context.Logger.LogInformation("Handling the 'GetAuth' Request");
-
-            var awsOptions = configuration.GetSection("AWS")
-               .Get<Options.AWSOptions>();
-
+            context.Logger.LogInformation("Handling the 'LambdaAuth' Request");
             ArgumentNullException.ThrowIfNull(awsOptions);
-            var resultadoValidacaoUsuario = ObterNomeUsuario(request, awsOptions);
-            if(resultadoValidacaoUsuario.Falhou)
+
+            var usuario = ObterUsuario(request, awsOptions.Value, ehCadastro: false);
+            var usuarioEhPadrao = usuario.Cpf.Equals(awsOptions.Value.UserTechLanches);
+            if (usuarioEhPadrao)
             {
-                return new APIGatewayProxyResponse
+                var resultadoCadastroUsuario = await cognitoService.SignUp(usuario);
+                if (!resultadoCadastroUsuario.Sucesso)
                 {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Body = JsonConvert.SerializeObject(resultadoValidacaoUsuario.Erros.First()),
-                    Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
-                };
+                    return Response.BadRequest(resultadoCadastroUsuario.Notificacoes);
+                }
             }
 
-            var nomeUsuario = resultadoValidacaoUsuario.Value;
-            var resultadoCadastroUsuario = await cognitoService.SignUp(nomeUsuario);
-            if (!resultadoCadastroUsuario.Sucesso)
-            {
-                return new APIGatewayProxyResponse
-                {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Body = JsonConvert.SerializeObject(resultadoCadastroUsuario.Erros.First()),
-                    Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
-                };
-            }
-
-            var resultadoLogin = await cognitoService.SignIn(nomeUsuario);
+            var resultadoLogin = await cognitoService.SignIn(usuario.Cpf);
             if (!resultadoLogin.Sucesso)
             {
-                return new APIGatewayProxyResponse
-                {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Body = JsonConvert.SerializeObject(resultadoLogin.Erros.First()),
-                    Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
-                };
+                return Response.BadRequest(resultadoLogin.Notificacoes);
             }
 
-            //gravar cliente no DB
-
-            var token = resultadoLogin.Value;
-            return new APIGatewayProxyResponse
-            {
-                StatusCode = !string.IsNullOrEmpty(token) ? (int)HttpStatusCode.OK : (int)HttpStatusCode.BadRequest,
-                Body = JsonConvert.SerializeObject(token),
-                Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
-            };
+            var tokenResult = resultadoLogin.Value;
+            return !string.IsNullOrEmpty(tokenResult.AccessToken) ? Response.Ok(tokenResult) : Response.BadRequest("Não possui token"); 
         }
         catch (Exception ex)
         {
@@ -104,17 +60,67 @@ public class Functions
         }
     }
 
-    private static Resultado<string> ObterNomeUsuario(APIGatewayProxyRequest request, AWSOptions awsOptions)
+    [LambdaFunction(Policies = "AWSLambdaBasicExecutionRole", MemorySize = 512, Timeout = 30)]
+    [RestApi(LambdaHttpMethod.Post, "/cadastro")]
+    public async Task<APIGatewayProxyResponse> LambdaCadastro(APIGatewayProxyRequest request,
+                                                  ILambdaContext context,
+                                                  [FromServices] ICognitoService cognitoService,
+                                                  [FromServices] IOptions<AWSOptions> awsOptions)
     {
-        const string NOME_QUERY_STRING = "cpf";
+        try
+        {
+            context.Logger.LogInformation("Handling the 'LambdaCadastro' Request");
 
-        bool cpfFoiInformado = request.QueryStringParameters.Any(x => x.Key == NOME_QUERY_STRING && !string.IsNullOrEmpty(x.Value) && !string.IsNullOrWhiteSpace(x.Value));
-        if (!cpfFoiInformado) return Resultado.Ok(awsOptions.UserTechLanches);
+            ArgumentNullException.ThrowIfNull(awsOptions);
 
-        if (!ValidatorCPF.Validar(request.QueryStringParameters[NOME_QUERY_STRING]))
-            return Resultado.Falha<string>("O CPF informado está inválido");
+            var usuario = ObterUsuario(request, awsOptions.Value, ehCadastro: true);
 
-        string cpfLimpo = ValidatorCPF.LimparCpf(request.QueryStringParameters[NOME_QUERY_STRING]);
-        return Resultado.Ok(cpfLimpo);
+            var resultadoValidacaoUsuario = new UsuarioCadastroValidation().Validate(usuario);
+            if(!resultadoValidacaoUsuario.IsValid)
+            {
+                return Response.BadRequest(resultadoValidacaoUsuario.Errors.Select(x => new NotificacaoDto(x.ErrorMessage)).ToList());
+            }
+            
+            var resultadoCadastroUsuario = await cognitoService.SignUp(usuario);
+            if (!resultadoCadastroUsuario.Sucesso)
+            {
+                return Response.BadRequest(resultadoCadastroUsuario.Notificacoes);
+            }
+
+            var resultadoLogin = await cognitoService.SignIn(usuario.Cpf);
+            if (!resultadoLogin.Sucesso)
+            {
+                return Response.BadRequest(resultadoLogin.Notificacoes);
+            }
+
+            var tokenResult = resultadoLogin.Value;
+            return !string.IsNullOrEmpty(tokenResult.AccessToken) ? Response.Ok(tokenResult) : Response.BadRequest("Não possui token");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Cadastro Lambda response error: " + ex.Message);
+            throw new Exception(ex.Message);
+        }
+    }
+
+    private UsuarioDto ObterUsuario(APIGatewayProxyRequest request, AWSOptions awsOptions, bool ehCadastro)
+    {
+        var usuario = JsonConvert.DeserializeObject<UsuarioDto>(request.Body) ?? new UsuarioDto();
+        ArgumentNullException.ThrowIfNull(usuario);
+
+        if (!CpfFoiInformado(usuario) && !ehCadastro)
+            return new UsuarioDto(awsOptions.UserTechLanches, awsOptions.EmailDefault, awsOptions.UserTechLanches);
+
+        string cpf = usuario.Cpf ?? string.Empty;
+        string cpfLimpo = ValidatorCPF.LimparCpf(cpf);
+        string email = usuario.Email ?? string.Empty;
+        string nome = usuario.Nome ?? string.Empty;
+        var user = new UsuarioDto(string.IsNullOrEmpty(cpfLimpo) ? cpf : cpfLimpo, email, nome);
+        return user;
+    }
+
+    private bool CpfFoiInformado(UsuarioDto usuario)
+    {
+        return !string.IsNullOrEmpty(usuario.Cpf) && !string.IsNullOrWhiteSpace(usuario.Cpf);
     }
 }

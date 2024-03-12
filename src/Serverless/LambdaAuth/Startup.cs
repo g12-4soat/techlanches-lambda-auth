@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using TechLanchesLambda.AWS.Options;
+using TechLanchesLambda.AWS.SecretsManager;
 using TechLanchesLambda.Service;
 
 namespace TechLanchesLambda;
@@ -10,23 +13,18 @@ namespace TechLanchesLambda;
 [LambdaStartup]
 public class Startup
 {
-    /// <summary>
-    /// Services for Lambda functions can be registered in the services dependency injection container in this method. 
-    ///
-    /// The services can be injected into the Lambda function through the containing type's constructor or as a
-    /// parameter in the Lambda function using the FromService attribute. Services injected for the constructor have
-    /// the lifetime of the Lambda compute container. Services injected as parameters are created within the scope
-    /// of the function invocation.
-    /// </summary>
     public void ConfigureServices(IServiceCollection services)
     {
         var builder = new ConfigurationBuilder()
             .SetBasePath(Path.Combine(Directory.GetCurrentDirectory()))
-            .AddJsonFile("appsettings.json");
+            .AddJsonFile("appsettings.json")
+            .AddAmazonSecretsManager("us-east-1", "lambda-auth-credentials");
 
         var configuration = builder.Build();
 
         services.AddSingleton<IConfiguration>(configuration);
+
+        services.Configure<AWSOptions>(configuration);
 
         services.AddLogging();
 
