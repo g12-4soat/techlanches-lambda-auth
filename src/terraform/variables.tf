@@ -25,5 +25,5 @@ variable "user-techlanches" {
 }
 
 variable "secrets-name" {
-  default = "lambda-auth-credentials"
+  default = "lambda-auth-teste-credentials"
 }

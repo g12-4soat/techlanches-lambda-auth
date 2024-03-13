@@ -87,3 +87,56 @@ resource "aws_lambda_permission" "apigateway_lambda_cadastro" {
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.tech_lanches_api_gateweay.execution_arn}/*/*"
 }
+
+data "aws_vpcs" "selected" {
+  filter {
+    name   = "isDefault"
+    values = ["true"]
+  }
+}
+
+data "aws_vpc" "eks_vpc" {
+  id = data.aws_vpcs.selected.ids[0]
+}
+
+data "aws_subnets" "selected" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpcs.selected.ids[0]]
+  }
+}
+
+data "aws_subnet" "selected" {
+  for_each = toset(data.aws_subnets.selected.ids)
+
+  id = each.value
+}
+
+resource "aws_lb" "example" {
+  name               = "example"
+  internal           = true
+  load_balancer_type = "network"
+
+  subnet_mapping {
+    subnet_id = "subnet-08707f569968d3479"
+  }
+}
+
+resource "aws_api_gateway_vpc_link" "eks_vpc_link" {
+  name        = "eks-vpc-link"
+  description = "VPC link to connect to Amazon EKS"
+
+  target_arns = ["arn:aws:elasticloadbalancing:us-east-1:637423589454:loadbalancer/net/ab2dfaa502a2e408fac41e93c3dc785b/22ce980298574f2e"]
+}
+
+resource "aws_api_gateway_integration" "eks_integration" {
+  rest_api_id = aws_api_gateway_rest_api.tech_lanches_api_gateweay.id
+  resource_id = aws_api_gateway_method.cadastro.resource_id
+  http_method = aws_api_gateway_method.cadastro.http_method
+
+  type                    = "HTTP_PROXY"
+  integration_http_method = "POST"
+  uri                     = "http://ab2dfaa502a2e408fac41e93c3dc785b-22ce980298574f2e.elb.us-east-1.amazonaws.com:5050"
+  connection_type         = "VPC_LINK"
+  connection_id           = aws_api_gateway_vpc_link.eks_vpc_link.id
+}
