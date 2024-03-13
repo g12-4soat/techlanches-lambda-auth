@@ -18,7 +18,7 @@ public class Startup
         var builder = new ConfigurationBuilder()
             .SetBasePath(Path.Combine(Directory.GetCurrentDirectory()))
             .AddJsonFile("appsettings.json")
-            .AddAmazonSecretsManager("us-east-1", "lambda-auth-teste-credentials");
+            .AddAmazonSecretsManager("us-east-1", "lambda-auth-credentials");
 
         var configuration = builder.Build();
 
