@@ -112,31 +112,47 @@ data "aws_subnet" "selected" {
   id = each.value
 }
 
-resource "aws_lb" "example" {
-  name               = "example"
-  internal           = true
-  load_balancer_type = "network"
-
-  subnet_mapping {
-    subnet_id = "subnet-08707f569968d3479"
+resource "aws_api_gateway_vpc_link" "main" {
+  name        = "foobar_gateway_vpclink"
+  description = "Foobar Gateway VPC Link. Managed by Terraform."
+  target_arns = [var.load_balancer_arn]
+}
+resource "aws_api_gateway_rest_api" "main" {
+  name        = "foobar_gateway"
+  description = "Foobar Gateway used for EKS. Managed by Terraform."
+  endpoint_configuration {
+    types = ["REGIONAL"]
   }
 }
-
-resource "aws_api_gateway_vpc_link" "eks_vpc_link" {
-  name        = "eks-vpc-link"
-  description = "VPC link to connect to Amazon EKS"
-
-  target_arns = ["arn:aws:elasticloadbalancing:us-east-1:637423589454:loadbalancer/net/ab2dfaa502a2e408fac41e93c3dc785b/22ce980298574f2e"]
+resource "aws_api_gateway_resource" "proxy" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_rest_api.main.root_resource_id
+  path_part   = "{proxy+}"
 }
-
-resource "aws_api_gateway_integration" "eks_integration" {
-  rest_api_id = aws_api_gateway_rest_api.tech_lanches_api_gateweay.id
-  resource_id = aws_api_gateway_method.cadastro.resource_id
-  http_method = aws_api_gateway_method.cadastro.http_method
-
+resource "aws_api_gateway_method" "proxy" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_resource.proxy.id
+  http_method   = "ANY"
+  authorization = "NONE"
+  request_parameters = {
+    "method.request.path.proxy"           = true
+    "method.request.header.Authorization" = true
+  }
+}
+resource "aws_api_gateway_integration" "proxy" {
+  rest_api_id             = aws_api_gateway_rest_api.main.id
+  resource_id             = aws_api_gateway_resource.proxy.id
+  http_method             = "ANY"
+  integration_http_method = "ANY"
   type                    = "HTTP_PROXY"
-  integration_http_method = "POST"
-  uri                     = "http://ab2dfaa502a2e408fac41e93c3dc785b-22ce980298574f2e.elb.us-east-1.amazonaws.com:5050"
-  connection_type         = "VPC_LINK"
-  connection_id           = aws_api_gateway_vpc_link.eks_vpc_link.id
+  uri                     = "http://${var.load_balancer_dns}:5050/{proxy}"
+  passthrough_behavior    = "WHEN_NO_MATCH"
+  content_handling        = "CONVERT_TO_TEXT"
+  request_parameters = {
+    "integration.request.path.proxy"           = "method.request.path.proxy"
+    "integration.request.header.Accept"        = "'application/json'"
+    "integration.request.header.Authorization" = "method.request.header.Authorization"
+  }
+  connection_type = "VPC_LINK"
+  connection_id   = aws_api_gateway_vpc_link.main.id
 }
