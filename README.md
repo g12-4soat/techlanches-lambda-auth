@@ -53,8 +53,8 @@ Da raiz do repositório, entre no diretório ./src/terraform (onde se encontram 
 
 ## Postman 
 Para importar as collections do postman, basta acessar os links a seguir:
-- Collection: https://github.com/g12-4soat/techlanches-lambda-auth/blob/main/docs/Fase3/LambdaTechLanches.postman_collection.json
-- Local Environment: https://github.com/g12-4soat/techlanches-lambda-auth/blob/main/docs/Fase3/TechLanchesGateway.postman_environment.json
+- Collection: https://github.com/g12-4soat/techlanches-lambda-auth/blob/main/docs/fase3/LambdaTechLanches.postman_collection.json
+- Local Environment: https://github.com/g12-4soat/techlanches-lambda-auth/blob/main/docs/fase3/TechLanchesGateway.postman_environment.json
 
 > Quando uma nova instância do API Gateway é criada, uma nova URL é gerada, exigindo a atualização manual da URL na Enviroment do Postman.
   ---
