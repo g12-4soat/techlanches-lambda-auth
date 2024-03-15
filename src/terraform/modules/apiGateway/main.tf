@@ -88,6 +88,8 @@ resource "aws_lambda_permission" "apigateway_lambda_cadastro" {
   source_arn    = "${aws_api_gateway_rest_api.tech_lanches_api_gateweay.execution_arn}/*/*"
 }
 
+data "aws_lb" "eks_lb_api" {}
+
 data "aws_vpcs" "selected" {
   filter {
     name   = "isDefault"
@@ -113,13 +115,13 @@ data "aws_subnet" "selected" {
 }
 
 resource "aws_api_gateway_vpc_link" "main" {
-  name        = "foobar_gateway_vpclink"
-  description = "Foobar Gateway VPC Link. Managed by Terraform."
-  target_arns = [var.load_balancer_arn]
+  name        = "eks-gateway-vpclink"
+  description = "Eks Gateway VPC Link. Managed by Terraform."
+  target_arns = [data.aws_lb.eks_lb_api.arn]
 }
 resource "aws_api_gateway_rest_api" "main" {
-  name        = "foobar_gateway"
-  description = "Foobar Gateway used for EKS. Managed by Terraform."
+  name        = "eks-gateway"
+  description = "Gateway used for EKS. Managed by Terraform."
   endpoint_configuration {
     types = ["REGIONAL"]
   }
@@ -145,7 +147,7 @@ resource "aws_api_gateway_integration" "proxy" {
   http_method             = "ANY"
   integration_http_method = "ANY"
   type                    = "HTTP_PROXY"
-  uri                     = "http://${var.load_balancer_dns}:5050/{proxy}"
+  uri                     = "http://${data.aws_lb.eks_lb_api.dns_name}:5050/{proxy}"
   passthrough_behavior    = "WHEN_NO_MATCH"
   content_handling        = "CONVERT_TO_TEXT"
   request_parameters = {
@@ -155,4 +157,28 @@ resource "aws_api_gateway_integration" "proxy" {
   }
   connection_type = "VPC_LINK"
   connection_id   = aws_api_gateway_vpc_link.main.id
+}
+
+resource "aws_api_gateway_deployment" "deployment_eks" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_api_gateway_stage" "stage_eks" {
+  deployment_id = aws_api_gateway_deployment.deployment_eks.id
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  stage_name    = "dev"
+}
+
+resource "aws_api_gateway_method_settings" "settings-eks" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  stage_name  = aws_api_gateway_stage.stage_eks.stage_name
+  method_path = "*/*"
+
+  settings {
+    metrics_enabled = false
+  }
 }
