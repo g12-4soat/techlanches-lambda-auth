@@ -112,7 +112,7 @@ jobs:
     needs: 
       - tf-test
 
-    if: github.ref == 'refs/heads/release' || github.ref == 'refs/heads/main'
+    #if: github.ref == 'refs/heads/release' || github.ref == 'refs/heads/main'
 
     runs-on: ubuntu-latest
 
@@ -163,7 +163,7 @@ jobs:
      needs: 
       - tf-deploy
     
-     if: github.ref == 'refs/heads/release' || github.ref == 'refs/heads/main'
+     #if: github.ref == 'refs/heads/release' || github.ref == 'refs/heads/main'
     
      runs-on: ubuntu-latest
      steps:
