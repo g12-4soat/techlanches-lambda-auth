@@ -5,19 +5,6 @@ resource "aws_api_gateway_rest_api" "tech_lanches_api_gateweay" {
   }
 }
 
-# resource "aws_api_gateway_resource" "proxy" {
-#   rest_api_id = aws_api_gateway_rest_api.tech_lanches_api_gateweay.id
-#   parent_id   = aws_api_gateway_rest_api.tech_lanches_api_gateweay.root_resource_id
-#   path_part   = "{proxy+}"
-# }
-
-# resource "aws_api_gateway_method" "proxy" {
-#   rest_api_id   = aws_api_gateway_rest_api.tech_lanches_api_gateweay.id
-#   resource_id   = aws_api_gateway_resource.proxy.id
-#   http_method   = "ANY"
-#   authorization = "NONE"
-# }
-
 resource "aws_api_gateway_resource" "auth" {
   rest_api_id = aws_api_gateway_rest_api.tech_lanches_api_gateweay.id
   parent_id   = aws_api_gateway_rest_api.tech_lanches_api_gateweay.root_resource_id
@@ -141,6 +128,7 @@ resource "aws_api_gateway_method" "proxy" {
     "method.request.header.Authorization" = true
   }
 }
+
 resource "aws_api_gateway_integration" "proxy" {
   rest_api_id             = aws_api_gateway_rest_api.main.id
   resource_id             = aws_api_gateway_resource.proxy.id
@@ -156,7 +144,7 @@ resource "aws_api_gateway_integration" "proxy" {
     "integration.request.header.Authorization" = "method.request.header.Authorization"
   }
   connection_type = "VPC_LINK"
-  connection_id   = aws_api_gateway_vpc_link.main.id
+  connection_id   = "${aws_api_gateway_vpc_link.main.id}"
 }
 
 resource "aws_api_gateway_deployment" "deployment_eks" {
@@ -165,6 +153,12 @@ resource "aws_api_gateway_deployment" "deployment_eks" {
   lifecycle {
     create_before_destroy = true
   }
+
+  depends_on = [ 
+    aws_api_gateway_integration.proxy,
+    aws_api_gateway_rest_api.main,
+    aws_api_gateway_method.proxy
+    ]
 }
 
 resource "aws_api_gateway_stage" "stage_eks" {
