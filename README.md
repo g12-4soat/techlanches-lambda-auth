@@ -65,9 +65,6 @@ Para importar as collections do postman, basta acessar os links a seguir:
 
 </details>
 
-
----
-
 <details>
   <summary>Versões</summary>
 
@@ -75,9 +72,9 @@ Para importar as collections do postman, basta acessar os links a seguir:
 - C-Sharp - 10.0
 - .NET - 8.0
 - Terraform - >= 0.13
- --- 
 </details>
 
+---
 # Dependências
 - [Terraform](https://www.terraform.io/)
 - [AWS Tools .NET](https://aws.amazon.com/pt/sdk-for-net/)
